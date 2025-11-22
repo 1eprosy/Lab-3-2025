@@ -200,6 +200,20 @@ public class LinkedListTabulatedFunction implements TabulatedFunction {
         FunctionNode current = startNode;
 
         while (current != head && current.next != head) {
+            // Проверяем точное совпадение с текущей точкой
+            if (x == current.point.getX()) {
+                lastAccessedNode = current;
+                lastAccessedIndex = getNodeIndex(current);
+                return current.point.getY();
+            }
+
+            // Проверяем точное совпадение со следующей точкой
+            if (x == current.next.point.getX()) {
+                lastAccessedNode = current.next;
+                lastAccessedIndex = getNodeIndex(current.next);
+                return current.next.point.getY();
+            }
+
             if (x >= current.point.getX() && x <= current.next.point.getX()) {
                 lastAccessedNode = current;
                 lastAccessedIndex = getNodeIndex(current);
