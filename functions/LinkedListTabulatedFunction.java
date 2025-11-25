@@ -192,7 +192,7 @@ public class LinkedListTabulatedFunction implements TabulatedFunction {
 
     @Override
     public double getFunctionValue(double x) {
-        if (x < getLeftDomainBorder() || x > getRightDomainBorder()) {
+        if (x < getLeftDomainBorder() - 1e-10 || x > getRightDomainBorder() + 1e-10) {
             return Double.NaN;
         }
 
@@ -200,33 +200,38 @@ public class LinkedListTabulatedFunction implements TabulatedFunction {
         FunctionNode current = startNode;
 
         while (current != head && current.next != head) {
-            // Проверяем точное совпадение с текущей точкой
-            if (x == current.point.getX()) {
+            double currentX = current.point.getX();
+            double nextX = current.next.point.getX();
+
+            // Проверяем точное совпадение с текущей точкой (с машинным эпсилоном)
+            if (Math.abs(x - currentX) < 1e-10) {
                 lastAccessedNode = current;
                 lastAccessedIndex = getNodeIndex(current);
                 return current.point.getY();
             }
 
-            // Проверяем точное совпадение со следующей точкой
-            if (x == current.next.point.getX()) {
+            // Проверяем точное совпадение со следующей точкой (с машинным эпсилоном)
+            if (Math.abs(x - nextX) < 1e-10) {
                 lastAccessedNode = current.next;
                 lastAccessedIndex = getNodeIndex(current.next);
                 return current.next.point.getY();
             }
 
-            if (x >= current.point.getX() && x <= current.next.point.getX()) {
+            // Проверяем нахождение в интервале (с машинным эпсилоном)
+            if (x >= currentX - 1e-10 && x <= nextX + 1e-10) {
                 lastAccessedNode = current;
                 lastAccessedIndex = getNodeIndex(current);
 
-                double x1 = current.point.getX();
+                double x1 = currentX;
                 double y1 = current.point.getY();
-                double x2 = current.next.point.getX();
+                double x2 = nextX;
                 double y2 = current.next.point.getY();
 
                 return y1 + (y2 - y1) * (x - x1) / (x2 - x1);
             }
 
-            if (x < current.point.getX()) {
+            // Определяем направление движения (с машинным эпсилоном)
+            if (x < currentX - 1e-10) {
                 current = current.prev;
             } else {
                 current = current.next;
