@@ -1,8 +1,8 @@
 package functions;
 
 public class LinkedListTabulatedFunction implements TabulatedFunction {
-    // Внутренний класс для элемента списка (остается без изменений)
-    protected class FunctionNode {
+
+    private static class FunctionNode {
         private FunctionPoint point;
         private FunctionNode prev;
         private FunctionNode next;
@@ -16,186 +16,160 @@ public class LinkedListTabulatedFunction implements TabulatedFunction {
             this.prev = prev;
             this.next = next;
         }
-
-        public FunctionPoint getPoint() {
-            return point;
-        }
-
-        public void setPoint(FunctionPoint point) {
-            this.point = point;
-        }
-
-        public FunctionNode getPrev() {
-            return prev;
-        }
-
-        public void setPrev(FunctionNode prev) {
-            this.prev = prev;
-        }
-
-        public FunctionNode getNext() {
-            return next;
-        }
-
-        public void setNext(FunctionNode next) {
-            this.next = next;
-        }
     }
 
-    // Поля основного класса
     private FunctionNode head;
     private int pointsCount;
     private FunctionNode lastAccessedNode;
     private int lastAccessedIndex;
 
+    // КОНСТРУКТОРЫ
     public LinkedListTabulatedFunction(double leftX, double rightX, int pointsCount) {
-        if (pointsCount < 2) {
-            throw new IllegalArgumentException("pointsCount must be at least 2");
-        }
-        if (leftX >= rightX) {
-            throw new IllegalArgumentException("leftX must be less than rightX");
+        if (leftX >= rightX || pointsCount < 2) {
+            throw new IllegalArgumentException("Некорректные параметры функции");
         }
 
         initializeList();
         double step = (rightX - leftX) / (pointsCount - 1);
-
         for (int i = 0; i < pointsCount; i++) {
             double x = leftX + i * step;
-            addNodeToTail().setPoint(new FunctionPoint(x, 0)); // Y = 0 по умолчанию
+            addNodeToTail().point = new FunctionPoint(x, 0);
         }
     }
 
     public LinkedListTabulatedFunction(double leftX, double rightX, double[] values) {
-        if (values.length < 2) {
-            throw new IllegalArgumentException("values array must have at least 2 elements");
-        }
-        if (leftX >= rightX) {
-            throw new IllegalArgumentException("leftX must be less than rightX");
+        if (leftX >= rightX || values.length < 2) {
+            throw new IllegalArgumentException("Некорректные параметры функции");
         }
 
         initializeList();
-        int pointsCount = values.length;
-        double step = (rightX - leftX) / (pointsCount - 1);
-
-        for (int i = 0; i < pointsCount; i++) {
+        double step = (rightX - leftX) / (values.length - 1);
+        for (int i = 0; i < values.length; i++) {
             double x = leftX + i * step;
-            addNodeToTail().setPoint(new FunctionPoint(x, values[i])); // Используем переданные значения Y
+            addNodeToTail().point = new FunctionPoint(x, values[i]);
         }
     }
 
-    // Инициализация пустого списка с головой
     private void initializeList() {
         head = new FunctionNode(null);
-        head.setPrev(head);
-        head.setNext(head);
+        head.next = head;
+        head.prev = head;
         pointsCount = 0;
         lastAccessedNode = head;
         lastAccessedIndex = -1;
     }
 
-    // Методы работы со списком (остаются без изменений)
-    protected FunctionNode getNodeByIndex(int index) {
+    // ВНУТРЕННИЕ МЕТОДЫ ДЛЯ РАБОТЫ СО СПИСКОМ (без изменений)
+    private FunctionNode getNodeByIndex(int index) {
         if (index < 0 || index >= pointsCount) {
-            throw new FunctionPointIndexOutOfBoundsException("Index out of bounds: " + index);
+            throw new FunctionPointIndexOutOfBoundsException(index);
         }
 
-        FunctionNode current;
-        int startIndex;
-
-        if (lastAccessedNode != head && lastAccessedIndex != -1) {
+        if (lastAccessedIndex != -1) {
             int distanceFromLast = Math.abs(index - lastAccessedIndex);
             int distanceFromStart = index;
             int distanceFromEnd = pointsCount - 1 - index;
 
             if (distanceFromLast <= distanceFromStart && distanceFromLast <= distanceFromEnd) {
-                current = lastAccessedNode;
-                startIndex = lastAccessedIndex;
+                return moveFromLastAccessed(index);
             } else if (distanceFromStart <= distanceFromEnd) {
-                current = head.getNext();
-                startIndex = 0;
+                return moveFromStart(index);
             } else {
-                current = head.getPrev();
-                startIndex = pointsCount - 1;
+                return moveFromEnd(index);
             }
         } else {
-            current = head.getNext();
-            startIndex = 0;
+            return moveFromStart(index);
         }
+    }
 
-        if (index > startIndex) {
-            for (int i = startIndex; i < index; i++) {
-                current = current.getNext();
-            }
-        } else if (index < startIndex) {
-            for (int i = startIndex; i > index; i--) {
-                current = current.getPrev();
-            }
+    private FunctionNode moveFromLastAccessed(int targetIndex) {
+        FunctionNode current = lastAccessedNode;
+        int currentIndex = lastAccessedIndex;
+
+        while (currentIndex < targetIndex) {
+            current = current.next;
+            currentIndex++;
+        }
+        while (currentIndex > targetIndex) {
+            current = current.prev;
+            currentIndex--;
         }
 
         lastAccessedNode = current;
-        lastAccessedIndex = index;
-
+        lastAccessedIndex = currentIndex;
         return current;
     }
 
-    protected FunctionNode addNodeToTail() {
-        FunctionNode newNode = new FunctionNode(null, head.getPrev(), head);
-        head.getPrev().setNext(newNode);
-        head.setPrev(newNode);
-        pointsCount++;
+    private FunctionNode moveFromStart(int index) {
+        FunctionNode current = head.next;
+        for (int i = 0; i < index; i++) {
+            current = current.next;
+        }
+        lastAccessedNode = current;
+        lastAccessedIndex = index;
+        return current;
+    }
 
+    private FunctionNode moveFromEnd(int index) {
+        FunctionNode current = head.prev;
+        for (int i = pointsCount - 1; i > index; i--) {
+            current = current.prev;
+        }
+        lastAccessedNode = current;
+        lastAccessedIndex = index;
+        return current;
+    }
+
+    private FunctionNode addNodeToTail() {
+        FunctionNode newNode = new FunctionNode(null, head.prev, head);
+        head.prev.next = newNode;
+        head.prev = newNode;
+        pointsCount++;
         lastAccessedNode = newNode;
         lastAccessedIndex = pointsCount - 1;
-
         return newNode;
     }
 
-    protected FunctionNode addNodeByIndex(int index) {
+    private FunctionNode addNodeByIndex(int index) {
         if (index < 0 || index > pointsCount) {
-            throw new FunctionPointIndexOutOfBoundsException("Index out of bounds: " + index);
+            throw new FunctionPointIndexOutOfBoundsException(index);
         }
 
         if (index == pointsCount) {
             return addNodeToTail();
         }
 
-        FunctionNode nodeAtIndex = getNodeByIndex(index);
-        FunctionNode newNode = new FunctionNode(null, nodeAtIndex.getPrev(), nodeAtIndex);
+        FunctionNode nextNode = getNodeByIndex(index);
+        FunctionNode prevNode = nextNode.prev;
+        FunctionNode newNode = new FunctionNode(null, prevNode, nextNode);
 
-        nodeAtIndex.getPrev().setNext(newNode);
-        nodeAtIndex.setPrev(newNode);
+        prevNode.next = newNode;
+        nextNode.prev = newNode;
         pointsCount++;
-
         lastAccessedNode = newNode;
         lastAccessedIndex = index;
-
         return newNode;
     }
 
-    protected FunctionNode deleteNodeByIndex(int index) {
+    private FunctionNode deleteNodeByIndex(int index) {
         if (index < 0 || index >= pointsCount) {
-            throw new FunctionPointIndexOutOfBoundsException("Index out of bounds: " + index);
+            throw new FunctionPointIndexOutOfBoundsException(index);
         }
         if (pointsCount <= 2) {
-            throw new IllegalStateException("Cannot delete point - function must have at least 2 points");
+            throw new IllegalStateException("Нельзя удалить точку - минимальное количество точек: 2");
         }
 
         FunctionNode nodeToDelete = getNodeByIndex(index);
+        FunctionNode prevNode = nodeToDelete.prev;
+        FunctionNode nextNode = nodeToDelete.next;
 
-        nodeToDelete.getPrev().setNext(nodeToDelete.getNext());
-        nodeToDelete.getNext().setPrev(nodeToDelete.getPrev());
+        prevNode.next = nextNode;
+        nextNode.prev = prevNode;
         pointsCount--;
 
-        if (lastAccessedNode == nodeToDelete) {
-            if (index < pointsCount) {
-                lastAccessedNode = getNodeByIndex(index);
-            } else if (pointsCount > 0) {
-                lastAccessedNode = getNodeByIndex(pointsCount - 1);
-                lastAccessedIndex = pointsCount - 1;
-            } else {
-                lastAccessedNode = head;
-                lastAccessedIndex = -1;
-            }
+        if (lastAccessedIndex == index) {
+            lastAccessedNode = head;
+            lastAccessedIndex = -1;
         } else if (lastAccessedIndex > index) {
             lastAccessedIndex--;
         }
@@ -203,194 +177,190 @@ public class LinkedListTabulatedFunction implements TabulatedFunction {
         return nodeToDelete;
     }
 
-    // МЕТОДЫ ТАБУЛИРОВАННОЙ ФУНКЦИИ (аналогичные TabulatedFunction)
-
-    public int getPointsCount() {
-        return pointsCount;
-    }
-
-    public FunctionPoint getPoint(int index) throws FunctionPointIndexOutOfBoundsException {
-        return new FunctionPoint(getNodeByIndex(index).getPoint());
-    }
-
-    public void setPoint(int index, FunctionPoint point) throws FunctionPointIndexOutOfBoundsException, InappropriateFunctionPointException {
-        if (index < 0 || index >= pointsCount) {
-            throw new FunctionPointIndexOutOfBoundsException("Index out of bounds: " + index);
-        }
-
-        FunctionNode node = getNodeByIndex(index);
-        double newX = point.getX();
-        double currentX = node.getPoint().getX();
-
-        // Проверка изменения X координаты
-        if (Math.abs(newX - currentX) > 1e-10) {
-            // Проверка упорядоченности
-            if (index > 0 && newX <= getNodeByIndex(index - 1).getPoint().getX()) {
-                throw new InappropriateFunctionPointException("New x must be greater than previous point's x");
-            }
-            if (index < pointsCount - 1 && newX >= getNodeByIndex(index + 1).getPoint().getX()) {
-                throw new InappropriateFunctionPointException("New x must be less than next point's x");
-            }
-        }
-
-        node.setPoint(new FunctionPoint(point));
-    }
-
-    public double getPointX(int index) throws FunctionPointIndexOutOfBoundsException {
-        return getNodeByIndex(index).getPoint().getX();
-    }
-
-    public void setPointX(int index, double x) throws FunctionPointIndexOutOfBoundsException, InappropriateFunctionPointException {
-        if (index < 0 || index >= pointsCount) {
-            throw new FunctionPointIndexOutOfBoundsException("Index out of bounds: " + index);
-        }
-
-        FunctionNode node = getNodeByIndex(index);
-        double currentX = node.getPoint().getX();
-        double y = node.getPoint().getY();
-
-        if (Math.abs(x - currentX) < 1e-10) {
-            return;
-        }
-
-        // Проверка упорядоченности
-        if (index > 0 && x <= getNodeByIndex(index - 1).getPoint().getX()) {
-            throw new InappropriateFunctionPointException("New x must be greater than previous point's x");
-        }
-        if (index < pointsCount - 1 && x >= getNodeByIndex(index + 1).getPoint().getX()) {
-            throw new InappropriateFunctionPointException("New x must be less than next point's x");
-        }
-
-        node.setPoint(new FunctionPoint(x, y));
-    }
-
-    public double getPointY(int index) throws FunctionPointIndexOutOfBoundsException {
-        return getNodeByIndex(index).getPoint().getY();
-    }
-
-    public void setPointY(int index, double y) throws FunctionPointIndexOutOfBoundsException {
-        if (index < 0 || index >= pointsCount) {
-            throw new FunctionPointIndexOutOfBoundsException("Index out of bounds: " + index);
-        }
-
-        FunctionNode node = getNodeByIndex(index);
-        double x = node.getPoint().getX();
-        node.setPoint(new FunctionPoint(x, y));
-    }
-
-    public void deletePoint(int index) throws FunctionPointIndexOutOfBoundsException, IllegalStateException {
-        deleteNodeByIndex(index);
-    }
-
-    public void addPoint(FunctionPoint point) throws InappropriateFunctionPointException {
-        // Находим позицию для вставки
-        FunctionNode current = head.getNext();
-        int insertIndex = 0;
-
-        while (current != head && current.getPoint().getX() < point.getX()) {
-            current = current.getNext();
-            insertIndex++;
-        }
-
-        // Проверка на существование точки с таким же X
-        if (current != head && Math.abs(current.getPoint().getX() - point.getX()) < 1e-10) {
-            throw new InappropriateFunctionPointException("Point with x=" + point.getX() + " already exists");
-        }
-
-        // Вставляем новую точку
-        FunctionNode newNode = addNodeByIndex(insertIndex);
-        newNode.setPoint(new FunctionPoint(point));
-    }
-
-    // ОПТИМИЗИРОВАННЫЕ МЕТОДЫ
-
+    // РЕАЛИЗАЦИЯ МЕТОДОВ ИНТЕРФЕЙСА
+    @Override
     public double getLeftDomainBorder() {
-        if (pointsCount == 0) {
-            return Double.NaN;
-        }
-        // Оптимизация: прямой доступ к первому элементу
-        return head.getNext().getPoint().getX();
+        if (pointsCount == 0) return Double.NaN;
+        return head.next.point.getX();
     }
 
+    @Override
     public double getRightDomainBorder() {
-        if (pointsCount == 0) {
-            return Double.NaN;
-        }
-        // Оптимизация: прямой доступ к последнему элементу
-        return head.getPrev().getPoint().getX();
+        if (pointsCount == 0) return Double.NaN;
+        return head.prev.point.getX();
     }
 
-    /**
-     * Оптимизированный метод вычисления значения функции
-     * Использует lastAccessedNode для ускорения последовательных вызовов
-     */
     @Override
     public double getFunctionValue(double x) {
-        if (pointsCount == 0) {
+        if (x < getLeftDomainBorder() || x > getRightDomainBorder()) {
             return Double.NaN;
         }
 
-        double leftBorder = getLeftDomainBorder();
-        double rightBorder = getRightDomainBorder();
+        FunctionNode startNode = (lastAccessedNode != head) ? lastAccessedNode : head.next;
+        FunctionNode current = startNode;
 
-        // Проверка границ с учетом машинного эпсилона
-        if (x < leftBorder - 1e-10 || x > rightBorder + 1e-10) {
-            return Double.NaN;
-        }
-
-        // Начинаем с первого элемента
-        FunctionNode current = head.getNext();
-
-        while (current != head && current.getNext() != head) {
-            double currentX = current.getPoint().getX();
-            double nextX = current.getNext().getPoint().getX();
-
-            // Проверка точного совпадения с текущей точкой
-            if (Math.abs(x - currentX) < 1e-10) {
+        while (current != head && current.next != head) {
+            // Проверяем точное совпадение с текущей точкой
+            if (x == current.point.getX()) {
                 lastAccessedNode = current;
                 lastAccessedIndex = getNodeIndex(current);
-                return current.getPoint().getY();
+                return current.point.getY();
             }
 
-            // Проверка точного совпадения со следующей точкой
-            if (Math.abs(x - nextX) < 1e-10) {
-                lastAccessedNode = current.getNext();
-                lastAccessedIndex = getNodeIndex(current.getNext());
-                return current.getNext().getPoint().getY();
+            // Проверяем точное совпадение со следующей точкой
+            if (x == current.next.point.getX()) {
+                lastAccessedNode = current.next;
+                lastAccessedIndex = getNodeIndex(current.next);
+                return current.next.point.getY();
             }
 
-            // Проверка нахождения в интервале (включая границы)
-            if (x >= currentX - 1e-10 && x <= nextX + 1e-10) {
+            if (x >= current.point.getX() && x <= current.next.point.getX()) {
                 lastAccessedNode = current;
                 lastAccessedIndex = getNodeIndex(current);
-                return linearInterpolation(current.getPoint(), current.getNext().getPoint(), x);
+
+                double x1 = current.point.getX();
+                double y1 = current.point.getY();
+                double x2 = current.next.point.getX();
+                double y2 = current.next.point.getY();
+
+                return y1 + (y2 - y1) * (x - x1) / (x2 - x1);
             }
 
-            current = current.getNext();
+            if (x < current.point.getX()) {
+                current = current.prev;
+            } else {
+                current = current.next;
+            }
         }
 
         return Double.NaN;
     }
+
+    @Override
+    public int getPointsCount() {
+        return pointsCount;
+    }
+
+    @Override
+    public FunctionPoint getPoint(int index) throws FunctionPointIndexOutOfBoundsException {
+        return new FunctionPoint(getNodeByIndex(index).point);
+    }
+
+    @Override
+    public void setPoint(int index, FunctionPoint point)
+            throws FunctionPointIndexOutOfBoundsException, InappropriateFunctionPointException {
+        FunctionNode node = getNodeByIndex(index);
+
+        if (index > 0 && point.getX() <= getNodeByIndex(index - 1).point.getX()) {
+            throw new InappropriateFunctionPointException(point);
+        }
+        if (index < pointsCount - 1 && point.getX() >= getNodeByIndex(index + 1).point.getX()) {
+            throw new InappropriateFunctionPointException(point);
+        }
+
+        node.point = new FunctionPoint(point);
+    }
+
+    @Override
+    public double getPointX(int index) throws FunctionPointIndexOutOfBoundsException {
+        return getNodeByIndex(index).point.getX();
+    }
+
+    @Override
+    public void setPointX(int index, double x)
+            throws FunctionPointIndexOutOfBoundsException, InappropriateFunctionPointException {
+        FunctionNode node = getNodeByIndex(index);
+
+        if (index > 0 && x <= getNodeByIndex(index - 1).point.getX()) {
+            throw new InappropriateFunctionPointException("New X coordinate " + x +
+                    " is inappropriate for point at index " + index);
+        }
+        if (index < pointsCount - 1 && x >= getNodeByIndex(index + 1).point.getX()) {
+            throw new InappropriateFunctionPointException("New X coordinate " + x +
+                    " is inappropriate for point at index " + index);
+        }
+
+        node.point.setX(x);
+    }
+
+    @Override
+    public double getPointY(int index) throws FunctionPointIndexOutOfBoundsException {
+        return getNodeByIndex(index).point.getY();
+    }
+
+    @Override
+    public void setPointY(int index, double y) throws FunctionPointIndexOutOfBoundsException {
+        getNodeByIndex(index).point.setY(y);
+    }
+
+    @Override
+    public void deletePoint(int index) throws FunctionPointIndexOutOfBoundsException {
+        deleteNodeByIndex(index);
+    }
+
+    @Override
+    public void addPoint(FunctionPoint point) throws InappropriateFunctionPointException {
+        FunctionNode startNode = (lastAccessedNode != head) ? lastAccessedNode : head.next;
+        FunctionNode current = startNode;
+        int insertIndex = 0;
+
+        if (point.getX() >= startNode.point.getX()) {
+            insertIndex = getNodeIndex(startNode);
+            current = startNode;
+            while (current != head && current.point.getX() < point.getX()) {
+                current = current.next;
+                insertIndex++;
+            }
+        } else {
+            insertIndex = getNodeIndex(startNode);
+            current = startNode;
+            while (current != head && current.point.getX() > point.getX()) {
+                current = current.prev;
+                insertIndex--;
+            }
+            insertIndex++;
+        }
+
+        if (current != head && Math.abs(current.point.getX() - point.getX()) < 1e-10) {
+            throw new InappropriateFunctionPointException(point);
+        }
+
+        FunctionNode newNode = addNodeByIndex(insertIndex);
+        newNode.point = new FunctionPoint(point);
+    }
+
+    @Override
+    public void printFunction() {
+        System.out.println("Табулированная функция (связный список):");
+        FunctionNode current = head.next;
+        while (current != head) {
+            System.out.printf("(%.6f; %.6f) ", current.point.getX(), current.point.getY());
+            current = current.next;
+        }
+        System.out.println();
+    }
+
     // Вспомогательные методы
     private int getNodeIndex(FunctionNode node) {
-        FunctionNode current = head.getNext();
+        FunctionNode current = head.next;
         int index = 0;
         while (current != head) {
-            if (current == node) {
-                return index;
-            }
-            current = current.getNext();
+            if (current == node) return index;
+            current = current.next;
             index++;
         }
         return -1;
     }
 
-    private double linearInterpolation(FunctionPoint p1, FunctionPoint p2, double x) {
-        double x1 = p1.getX();
-        double y1 = p1.getY();
-        double x2 = p2.getX();
-        double y2 = p2.getY();
-
-        return y1 + (y2 - y1) * (x - x1) / (x2 - x1);
+    public void printListStructure() {
+        System.out.println("Структура списка:");
+        FunctionNode current = head;
+        do {
+            System.out.printf("[%s] <-> ",
+                    (current.point == null) ? "HEAD" :
+                            String.format("(%.1f;%.1f)", current.point.getX(), current.point.getY()));
+            current = current.next;
+        } while (current != head);
+        System.out.println("[HEAD]");
     }
 }
